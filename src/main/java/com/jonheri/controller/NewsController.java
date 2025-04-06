@@ -78,13 +78,53 @@ public class NewsController {
     }
 
     @PutMapping("/{id}") // updated news
-    public ResponseEntity<News> updateNews(@PathVariable Long id, @RequestBody News news) {
+    public ResponseEntity<ResponseDTO<News>> updateNews(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) News news,
+            BindingResult bindingResult) {
+
+        Optional<News> existingNewsOptional = newsService.getNewsById(id);
+
+        if (existingNewsOptional.isEmpty()) {
+            ResponseDTO<News> response = new ResponseDTO<>("fail", "Data with id: " + id + " not found", null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        if (news == null) {
+            ResponseDTO<News> response = new ResponseDTO<>("fail", "No data input");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (bindingResult.hasErrors()) {
+            Map<String, List<String>> errors = new HashMap<>();
+            for (FieldError fieldError : bindingResult.getFieldErrors()) {
+                errors.computeIfAbsent(fieldError.getField(), k -> new java.util.ArrayList<>())
+                        .add(fieldError.getDefaultMessage());
+            }
+            ResponseDTO<News> response = new ResponseDTO<>("fail", "Add data fail", null, errors);
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        Optional<News> newsWithSameTitle = newsRepository.findByTitle(news.getTitle());
+        if (newsWithSameTitle.isPresent() && !newsWithSameTitle.get().getId().equals(id)) {
+            ResponseDTO<News> response = new ResponseDTO<>("fail", "Data with this title already exist");
+            return ResponseEntity.badRequest().body(response);
+        }
+
         News updatedNews = newsService.updateNews(id, news);
-        return ResponseEntity.ok(updatedNews);
+        ResponseDTO<News> response = new ResponseDTO<>("success", "Updated news successfully", updatedNews);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}") // delete news
-    public ResponseEntity<Void> deleteNews(@PathVariable Long id) {
+    public ResponseEntity<ResponseDTO<News>> deleteNews(@PathVariable Long id) {
+        Optional<News> existingNewsOptional = newsService.getNewsById(id);
+
+        if (existingNewsOptional.isEmpty()) {
+            ResponseDTO<News> response = new ResponseDTO<>("fail", "Data with id: " + id + " not found", null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
         newsService.deleteNews(id);
         return ResponseEntity.noContent().build();
     }
