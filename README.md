@@ -2,7 +2,7 @@
 
 ## Tentang Spring Boot:
 
---- Download project di: `https://start.spring.io/`
+- Download project di: `https://start.spring.io/`
 
 - Project: Maven
 - Language: Java
